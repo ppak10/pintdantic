@@ -1,0 +1,10 @@
+[project]
+name = "pintdantic"
+version = "0.0.0"
+description = "Pydantic bindings for Pint"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pint>=0.24.4",
+    "pydantic>=2.11.9",
+]
