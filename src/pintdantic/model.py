@@ -100,10 +100,6 @@ class QuantityModel(BaseModel):
 
                 # Tuple (magnitude, unit)
                 elif isinstance(v, tuple) and len(v) == 2:
-                    if len(v) != 2:
-                        raise ValueError(
-                            f"Expected exact length of 2 (magnitude, units) if tuple is provided"
-                        )
                     if not isinstance(v[0], (float, int)):
                         raise ValueError(
                             f"Magnitude must be float or int, got {type(v[0])}"

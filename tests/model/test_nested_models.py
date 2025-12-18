@@ -222,3 +222,83 @@ def test_complex_real_world_example():
     assert d["segments"][0]["x1"]["magnitude"] == 0.0
     assert d["segments"][0]["distance"]["units"] == "millimeter"
     assert d["segments"][1]["travel"] is True
+
+
+def test_nested_json_loading():
+    """Test that nested models can be loaded from JSON"""
+    import json
+
+    class InnerModel(QuantityModel):
+        length: QuantityField
+        width: QuantityField
+
+    class OuterModel(QuantityModel):
+        name: str
+        inner: InnerModel
+        height: QuantityField
+
+    # Create original model
+    original = OuterModel(
+        name="test",
+        inner=InnerModel(length=Quantity(5.0, "m"), width=Quantity(3.0, "m")),
+        height=Quantity(2.0, "m"),
+    )
+
+    # Serialize to JSON string
+    json_str = original.model_dump_json()
+
+    # Parse JSON and recreate model
+    json_data = json.loads(json_str)
+    loaded = OuterModel(**json_data)
+
+    # Verify all fields are correctly loaded as Quantity objects
+    assert isinstance(loaded.height, Quantity)
+    assert loaded.height.magnitude == 2.0
+    assert str(loaded.height.units) == "meter"
+
+    assert isinstance(loaded.inner, InnerModel)
+    assert isinstance(loaded.inner.length, Quantity)
+    assert loaded.inner.length.magnitude == 5.0
+    assert str(loaded.inner.length.units) == "meter"
+    assert isinstance(loaded.inner.width, Quantity)
+    assert loaded.inner.width.magnitude == 3.0
+
+
+def test_nested_list_json_loading():
+    """Test that lists of nested models can be loaded from JSON"""
+    import json
+
+    class SolverSegment(QuantityModel):
+        x: QuantityField
+        y: QuantityField
+        travel: bool
+
+    class SolverLayer(BaseModel):
+        index: int
+        segments: list[SolverSegment]
+
+    # Create original model
+    original = SolverLayer(
+        index=1,
+        segments=[
+            SolverSegment(x=Quantity(0.0, "mm"), y=Quantity(0.0, "mm"), travel=False),
+            SolverSegment(x=Quantity(10.0, "mm"), y=Quantity(5.0, "mm"), travel=True),
+        ],
+    )
+
+    # Serialize and deserialize
+    json_str = original.model_dump_json()
+    json_data = json.loads(json_str)
+    loaded = SolverLayer(**json_data)
+
+    # Verify
+    assert loaded.index == 1
+    assert len(loaded.segments) == 2
+
+    assert isinstance(loaded.segments[0].x, Quantity)
+    assert loaded.segments[0].x.magnitude == 0.0
+    assert str(loaded.segments[0].x.units) == "millimeter"
+
+    assert isinstance(loaded.segments[1].y, Quantity)
+    assert loaded.segments[1].y.magnitude == 5.0
+    assert loaded.segments[1].travel is True
