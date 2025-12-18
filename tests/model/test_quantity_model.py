@@ -107,7 +107,7 @@ def test_parse_from_float_without_default_units_raises():
 def test_serialize_model_returns_dict():
     data = {"length": Quantity(1.0, "m"), "width": Quantity(2.0, "m"), "id": 42}
     model = ChildModel(**data)
-    serialized = model.serialize_model(lambda m: m.model_dump())
+    serialized = model.serialize_model()
     assert serialized["length"]["magnitude"] == 1.0
     assert serialized["length"]["units"] == "meter"
     assert serialized["width"]["magnitude"] == 2.0

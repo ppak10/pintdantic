@@ -33,14 +33,33 @@ class QuantityModel(BaseModel):
         # Create Quantity from magnitude and units string
         return cast(Quantity, Quantity(d["magnitude"], d["units"]))
 
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        data = handler(self)
+    def _serialize_value(self, value: Any) -> Any:
+        """Recursively serialize a value, handling Quantity and nested QuantityModel instances."""
+        if isinstance(value, Quantity):
+            return self._quantity_to_dict(value)
+        elif isinstance(value, QuantityModel):
+            # Recursively serialize nested QuantityModel by getting its dict representation
+            nested_data = {}
+            for field in value.__class__.model_fields:
+                nested_value = getattr(value, field)
+                nested_data[field] = self._serialize_value(nested_value)
+            return nested_data
+        elif isinstance(value, list):
+            # Handle lists of any items (including QuantityModel instances)
+            return [self._serialize_value(item) for item in value]
+        elif isinstance(value, dict):
+            # Handle dictionaries
+            return {k: self._serialize_value(v) for k, v in value.items()}
+        else:
+            # Return as-is for primitive types
+            return value
 
+    @model_serializer
+    def serialize_model(self):
+        data = {}
         for field in self.__class__.model_fields:
             value = getattr(self, field)
-            if isinstance(value, Quantity):
-                data[field] = self._quantity_to_dict(value)
+            data[field] = self._serialize_value(value)
         return data
 
     @model_validator(mode="before")
@@ -139,11 +158,5 @@ class QuantityModel(BaseModel):
         out = {}
         for field in self.__class__.model_fields:
             value = getattr(self, field)
-            if isinstance(value, Quantity):
-                out[field] = {
-                    "magnitude": value.magnitude,
-                    "units": str(value.units),
-                }
-            else:
-                out[field] = value
+            out[field] = self._serialize_value(value)
         return out
