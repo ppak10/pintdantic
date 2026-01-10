@@ -8,8 +8,24 @@ from typing import Any
 from typing_extensions import cast, ClassVar, get_args, TypeVar
 
 from .types import QuantityDict, QuantityField, QuantityList
+from typing import get_origin
 
-QUANTITY_FIELD_SET = set(get_args(QuantityField))
+# Get the underlying union type from the Annotated QuantityField
+# QuantityField is Annotated[Union[...], ...], so get_args returns (Union, annotation)
+# We need the first arg (the Union) and then get its args
+_quantity_field_args = get_args(QuantityField)
+if _quantity_field_args:
+    # First arg is the actual type (Union[Quantity, ...])
+    _underlying_type = _quantity_field_args[0]
+    # Get the union members
+    QUANTITY_FIELD_SET = (
+        set(get_args(_underlying_type))
+        if get_args(_underlying_type)
+        else {_underlying_type}
+    )
+else:
+    # Fallback if not Annotated
+    QUANTITY_FIELD_SET = set(get_args(QuantityField))
 
 T = TypeVar("T", bound="QuantityModel")
 
