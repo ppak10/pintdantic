@@ -35,7 +35,7 @@ def test_dict_to_quantity_method():
 
 
 def test_serialize_dict_values():
-    """Test serialization of dict values containing Quantities"""
+    """Test serialization of dict values containing Quantities (condensed by default)"""
     model = ModelWithDict(
         metadata={"key1": "value1", "key2": 123},
         length=Quantity(10.0, "m"),
@@ -44,11 +44,11 @@ def test_serialize_dict_values():
     serialized = model.to_dict()
     assert serialized["metadata"]["key1"] == "value1"
     assert serialized["metadata"]["key2"] == 123
-    assert serialized["length"]["magnitude"] == 10.0
+    assert serialized["length"] == [10.0, "meter"]
 
 
 def test_serialize_nested_dict_with_quantities():
-    """Test serialization of dicts containing Quantity objects"""
+    """Test serialization of dicts containing Quantity objects (condensed by default)"""
 
     class ModelWithQuantityDict(QuantityModel):
         data: dict
@@ -59,9 +59,14 @@ def test_serialize_nested_dict_with_quantities():
     )
 
     serialized = model.to_dict()
-    assert serialized["data"]["measurement"]["magnitude"] == 25.0
-    assert serialized["data"]["measurement"]["units"] == "centimeter"
+    assert serialized["data"]["measurement"] == [25.0, "centimeter"]
     assert serialized["data"]["count"] == 5
+
+    # Test verbose format
+    serialized_verbose = model.to_dict(verbose=True)
+    assert serialized_verbose["data"]["measurement"]["magnitude"] == 25.0
+    assert serialized_verbose["data"]["measurement"]["units"] == "centimeter"
+    assert serialized_verbose["data"]["count"] == 5
 
 
 def test_default_tuple_handling_when_field_not_provided():
@@ -157,7 +162,7 @@ def test_serialize_empty_dict():
 
 
 def test_serialize_nested_dict_with_nested_model():
-    """Test serialization of dict containing nested models"""
+    """Test serialization of dict containing nested models (condensed by default)"""
 
     class Inner(QuantityModel):
         size: QuantityField
@@ -169,12 +174,17 @@ def test_serialize_nested_dict_with_nested_model():
     outer = Outer(data={"nested": inner, "value": 42})
 
     serialized = outer.to_dict()
-    assert serialized["data"]["nested"]["size"]["magnitude"] == 10.0
+    assert serialized["data"]["nested"]["size"] == [10.0, "meter"]
     assert serialized["data"]["value"] == 42
+
+    # Test verbose format
+    serialized_verbose = outer.to_dict(verbose=True)
+    assert serialized_verbose["data"]["nested"]["size"]["magnitude"] == 10.0
+    assert serialized_verbose["data"]["value"] == 42
 
 
 def test_serialize_list_with_mixed_types():
-    """Test serialization of lists containing mixed types"""
+    """Test serialization of lists containing mixed types (condensed by default)"""
 
     class TestModel(QuantityModel):
         items: list
@@ -186,6 +196,11 @@ def test_serialize_list_with_mixed_types():
     serialized = model.to_dict()
     assert serialized["items"][0] == 1
     assert serialized["items"][1] == "string"
-    assert serialized["items"][2]["magnitude"] == 5.0
+    assert serialized["items"][2] == [5.0, "meter"]
     assert serialized["items"][3] == {"key": "value"}
     assert serialized["items"][4] == [1, 2, 3]
+
+    # Test verbose format
+    serialized_verbose = model.to_dict(verbose=True)
+    assert serialized_verbose["items"][2]["magnitude"] == 5.0
+    assert serialized_verbose["items"][2]["units"] == "meter"
