@@ -1,5 +1,3 @@
-import pytest
-
 from pathlib import Path
 from pintdantic import QuantityField, QuantityModel
 from pint import Quantity
