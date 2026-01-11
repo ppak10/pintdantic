@@ -3,7 +3,6 @@ Tests to improve code coverage for edge cases and error handling.
 """
 
 import pytest
-import json
 from pathlib import Path
 from pint import Quantity
 from pydantic import ValidationError
@@ -204,3 +203,111 @@ def test_serialize_list_with_mixed_types():
     serialized_verbose = model.to_dict(verbose=True)
     assert serialized_verbose["items"][2]["magnitude"] == 5.0
     assert serialized_verbose["items"][2]["units"] == "meter"
+
+
+def test_invalid_list_units_type():
+    """Test error when list format has non-string units"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+
+    with pytest.raises(ValidationError) as exc_info:
+        TestModel(length=[10.0, 123])  # Units should be string, not int
+
+    assert "Units must be str" in str(exc_info.value)
+
+
+def test_invalid_list_magnitude_type():
+    """Test error when list format has non-numeric magnitude"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+
+    with pytest.raises(ValidationError) as exc_info:
+        TestModel(length=["not a number", "m"])
+
+    assert "Magnitude must be float or int" in str(exc_info.value)
+
+
+def test_invalid_input_type():
+    """Test error when invalid type is provided for quantity field"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+
+    # Test with set (invalid type)
+    with pytest.raises(ValidationError) as exc_info:
+        TestModel(length={10.0, "m"})
+
+    assert "Invalid input for quantity field" in str(exc_info.value)
+
+
+def test_model_dump_json_condensed():
+    """Test JSON string serialization with condensed format (default)"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+        name: str
+
+    model = TestModel(length=Quantity(10.0, "m"), name="test")
+    json_str = model.model_dump_json()
+
+    # Parse JSON and verify structure
+    import json
+
+    data = json.loads(json_str)
+    assert data["length"] == [10.0, "meter"]
+    assert data["name"] == "test"
+
+
+def test_model_dump_json_verbose():
+    """Test JSON string serialization with verbose format"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+        name: str
+
+    model = TestModel(length=Quantity(10.0, "m"), name="test")
+    json_str = model.model_dump_json(context={"verbose": True})
+
+    # Parse JSON and verify structure
+    import json
+
+    data = json.loads(json_str)
+    assert data["length"]["magnitude"] == 10.0
+    assert data["length"]["units"] == "meter"
+    assert data["name"] == "test"
+
+
+def test_from_dict_method():
+    """Test the from_dict class method"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+        width: QuantityField
+
+    data = {"length": [10.0, "m"], "width": {"magnitude": 5.0, "units": "m"}}
+    model = TestModel.from_dict(data)
+
+    assert isinstance(model.length, Quantity)
+    assert model.length.magnitude == 10.0
+    assert str(model.length.units) == "meter"
+    assert isinstance(model.width, Quantity)
+    assert model.width.magnitude == 5.0
+
+
+def test_quantity_field_with_optional():
+    """Test QuantityField with None/optional values"""
+
+    class TestModel(QuantityModel):
+        length: QuantityField
+        optional_width: QuantityField = None
+
+    model = TestModel(length=Quantity(10.0, "m"))
+    assert model.length.magnitude == 10.0
+    assert model.optional_width is None
+
+    # Test serialization with None value
+    serialized = model.to_dict()
+    assert serialized["length"] == [10.0, "meter"]
+    assert serialized["optional_width"] is None
